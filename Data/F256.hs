@@ -5,23 +5,17 @@ module Data.F256
     module Data.Modulo,
     module Data.Polinomio,
 
-    F2,
-    F256,
-    
-    generador
+    F256
     
    ) where
 
 import Data.Modulo
 import Data.Polinomio
-
-instance Modulable Int where
-   modulo = 2
-
-type F2 = Modulo Int
+import Data.F2
 
 instance Modulable (Polinomio F2) where
    modulo = P 1 8 $ P 1 4 $ P 1 3 $ P 1 2 $ 1
+   generador = M x
 
 type F256 = Modulo (Polinomio F2)
 
@@ -32,9 +26,6 @@ show' (M p) = (take (8-length coef ) $ repeat '0') ++ go coef
          go (0:xs) = '0':(go xs)
          go (1:xs) = '1':(go xs)
 
-
-generador :: F256
-generador = M x
 
 elementos :: [F256]
 elementos = go generador

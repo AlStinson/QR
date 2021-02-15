@@ -61,10 +61,24 @@ coeficientes p@(P a n q) = go p n
          go (C a) 0 = [a]
          go (C a) m = 0:(go (C a) (m-1))
 
-creaPolinomio :: [a] -> Polinomio a
+creaPolinomio :: (Eq a, Num a) => [a] -> Polinomio a
 creaPolinomio xs = go xs $ length xs
-   where go (x:xs) 1 = C x
+   where go (x:[]) 1 = C x
+         go (0:xs) n = go xs (n-1)
          go (x:xs) n = P x (n-1) $ go xs (n-1) 
+
+evalua :: Num a => Polinomio a -> a -> a
+evalua (C a) _ = a
+evalua (P a n p) x = a*x^n + (evalua p x) 
+
+esRaiz :: (Eq a,Num a) => Polinomio a -> a -> Bool
+esRaiz p = (0==) . (evalua p)
+
+buscaSoluciones :: (Eq a, Num a, Enum a) => Polinomio a -> Int -> [a]
+buscaSoluciones p n = go 1 n
+   where go _ 0 = []
+         go r n | esRaiz p r = r:(go (succ r) (n-1))
+                | otherwise = go (succ r) n
 
 instance (Show a, Eq a, Num a) => Show (Polinomio a) where
    show x = go x 0
