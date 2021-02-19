@@ -26,7 +26,7 @@ instance Modulable a => Num (Modulo a) where
    (-) (M x) (M y) = reduce $ x-y
    (*) (M x) (M y) = reduce $ x*y
    abs = id
-   signum (M x) = if x==0 then 0 else 1
+   signum _ = 1
    fromInteger = reduce . fromInteger
    
 instance Modulable a => Fractional (Modulo a) where
@@ -47,7 +47,7 @@ instance Modulable a => Enum (Modulo a) where
    fromEnum x = go generador 1
       where go 1 _ = error "Elemento no enumerable"
             go y n | x==y = n
-                   | otherwise = go (succ x) (n+1) 
+                   | otherwise = go (succ y) (n+1) 
 
 
 instance (Show a, Modulable a) => Show (Modulo a) where

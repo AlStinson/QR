@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Data.Polinomio where
 
 import Data.Euclideo
@@ -5,7 +7,7 @@ import Data.Euclideo
 data Polinomio a = P a Int (Polinomio a) | C a
 
 instance Eq a => Eq (Polinomio a) where
-   (==) (P a n p) (P b m q) = a==b && n==m && p==q
+   (==) (P a n p) (P b m q) = n==m && a==b && p==q
    (==) (C a)     (C b)     = a==b
    (==) _         _         = False
    
@@ -53,6 +55,10 @@ instance (Eq a, Fractional a) => Euclideo (Polinomio a) where
 x :: Num a => Polinomio a
 x = P 1 1 $ C 0
 
+grado :: Polinomio a -> Int
+grado (C _)     = 0
+grado (P _ n _) = n
+
 coeficientes :: Num a => Polinomio a -> [a]
 coeficientes (C n) = [n]
 coeficientes p@(P a n q) = go p n
@@ -63,19 +69,27 @@ coeficientes p@(P a n q) = go p n
 
 creaPolinomio :: (Eq a, Num a) => [a] -> Polinomio a
 creaPolinomio xs = go xs $ length xs
-   where go (x:[]) 1 = C x
+   where go _      0 = C 0
+         go (x:[]) 1 = C x
          go (0:xs) n = go xs (n-1)
          go (x:xs) n = P x (n-1) $ go xs (n-1) 
 
+deListas :: (Eq a, Num a) => [a] -> [Int] -> Polinomio a
+deListas [] [] = C 0
+deListas (x:xs) (n:ns) = case n of
+                           0 -> (C x) + (deListas xs ns)
+                           _ -> (P x n 0) + (deListas xs ns)
+
 evalua :: Num a => Polinomio a -> a -> a
-evalua (C a) _ = a
-evalua (P a n p) x = a*x^n + (evalua p x) 
+evalua p x = go (coeficientes p) 0
+   where go [c]    n = n+c
+         go (c:cs) n = go cs $ x*(n+c)
 
 esRaiz :: (Eq a,Num a) => Polinomio a -> a -> Bool
 esRaiz p = (0==) . (evalua p)
 
-buscaSoluciones :: (Eq a, Num a, Enum a) => Polinomio a -> Int -> [a]
-buscaSoluciones p n = go 1 n
+buscaSoluciones :: (Eq a, Num a, Enum a) => Polinomio a -> [a]
+buscaSoluciones p = go 1 (grado p)
    where go _ 0 = []
          go r n | esRaiz p r = r:(go (succ r) (n-1))
                 | otherwise = go (succ r) n

@@ -4,7 +4,7 @@ import Data.F256
 import Data.Euclideo
 import Data.Matrix
 import Data.Either
-import Data.Maybe
+import Data.BuscaInversa
 
 
 --            RS n k r
@@ -14,6 +14,7 @@ data RSCode = RS
                datos :: Int,       -- k = numero de palabras de datos
                correcciones :: Int -- r = capacidad de coreccion
               } 
+   deriving Show
 
 detectores :: RSCode -> Int
 detectores rs = (palabras rs) - (datos rs)
@@ -36,25 +37,43 @@ sindromes :: RSCode -> Polinomio F256 -> [F256]
 sindromes rs p = [evalua p $ generador^n | n<-[1..2*correcciones rs]]
 
 corrigeErrores :: RSCode -> Polinomio F256 -> Polinomio F256
-corrigeErrores rs p | all (0==) s = p
-                    | otherwise = corrige p (map toEnum posErrores) errores
+corrigeErrores rs p = p- if all (0==) s then 0 else (deListas errores pos)
    where s = sindromes rs p
-         go c = (try c ) .  inverse . (matrix c c) $
-                (\(x,y) -> (-1)^(x+y)*(s !! (x+y-2)))
-         try c (Left _) = go $ c-1
-         try c (Right m) = m*(matrix c 1 (\(x,_) -> -(s !! c+x-1)))
-         posErrores = buscaSoluciones $ creaPolinomio $ go $
-                      correcciones r
-         numErrores = length posErrores
-         sindromesM = fromList numErrores 1 s 
-         errores = fromJust $ sisLineal $ matrix numErrores numErrores 
-                   (\(x,y) -> (posErrores !! y)^x) (fromList numErrores
-                                                                 1 s)
-         corrige p [] [] = p
-         corrige p (n:ns) (a:as) = corrige (p-(P a n 0)) ns as
+         expPos = expPosErrores rs s
+         pos = map fromEnum expPos
+         numErrores = length expPos
+         errores = toList $ m*(fromList numErrores 1 s)
+            where (Right m) = inverse $ matrix numErrores numErrores 
+                              (\(x,y) -> (expPos !! (y-1))^x)
 
-sisLineal :: Matrix a -> Matrix a -> Maybe (Matrix a)
-sisLineal a b = go (inverse a)
-   where go (Left _) = Nothing
-         go (Right m) = Just m*a
+expPosErrores :: RSCode -> [F256] -> [F256]
+expPosErrores rs s = buscaSoluciones . creaPolinomio . (1:) . 
+                   reverse . toList $ inv * b 
+   where d1 = correcciones rs
+         d2 = nrows inv
+         inv = menorInvertible $ (matrix d1 d1) $ 
+               (\(x,y) -> (s !! (x+y-2)))
+         b = matrix d2 1 (\(x,_) -> -(s !!(d2+x-1)))
    
+-----------------------------------------------------------------------------
+
+-- Ejemplo 
+
+{-
+
+rs = RS 7 3 2
+mensaje :: Polinomio F256
+mensaje = creaPolinomio [1,reduce x,reduce (x+1)]
+cifrado = codifica rs mensaje
+
+errorr = creaPolinomio [reduce x, 0,0,0,reduce (x^2)]
+errado = cifrado +errorr
+s = sindromes rs errado
+expPos = expPosErrores rs s
+pos = map fromEnum expPos
+numErrores = length expPos
+errores = toList $ m*(fromList numErrores 1 s)
+   where (Right m) = inverse $ matrix numErrores numErrores 
+                     (\(x,y) -> (expPos !! (y-1))^x)
+
+-}
