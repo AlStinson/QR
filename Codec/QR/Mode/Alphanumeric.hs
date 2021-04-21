@@ -1,21 +1,50 @@
-module Codec.QR.Mode.Alphanumeric (alphanumericToBitString)where
+module Codec.QR.Mode.Alphanumeric 
+  (
+    is,
+    modeIndicator,
+    characterCountLength, 
+    toBitString, 
+    minVersion
+  ) where
 
+import Codec.QR.Version
+import Codec.QR.ErrorCorrection.Level
 import Data.BitString
 import Data.Char
 
-alphanumericToBitString :: String -> BitString
-alphanumericToBitString [] = []
-alphanumericToBitString (x:y:xs) = integralToBitString  
-                                   ((toInt x)*45+(toInt y)) 11 ++ 
-                                   alphanumericToBitString xs
-alphanumericToBitString (x:_) = integralToBitString (toInt x) 6
+is :: Char -> Bool
+is c = elem c set
 
-simbolos = ['0'..'9']++['A'..'Z']++" $%*+-./:"
+minVersion :: ECLevel -> Version
+minVersion = MV 2
+
+modeIndicator :: Version -> BitString
+modeIndicator = numberVersionCase f g
+   where f 1 = error "Alphanumeric not available in MV-1"
+         f n = integralToBitString 1 (n-1)
+         g _ = integralToBitString 2 4
+
+characterCountLength :: Version -> Int
+characterCountLength = numberVersionCase f g
+   where f 1 = error "Alphanumeric mode not available in MV-1"
+         f n = n+1
+         g n | n<= 9 = 9
+             | n<=26 = 11
+             | n<=40 = 13
+
+toBitString :: String -> BitString
+toBitString [] = []
+toBitString (x:y:xs) = integralToBitString  
+                                   ((toInt x)*45+(toInt y)) 11 ++ 
+                                   toBitString xs
+toBitString (x:_) = integralToBitString (toInt x) 6
+
+set = ['0'..'9']++['A'..'Z']++" $%*+-./:"
 
 toInt :: Char -> Int
-toInt = go simbolos 0
+toInt = go set 0
    where go (x:xs) n a | x==a = n
                        | otherwise = go xs (n+1) a  
 
 fromInt :: Int -> Char
-fromInt n = simbolos !! n
+fromInt n = set !! n

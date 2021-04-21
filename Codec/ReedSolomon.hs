@@ -1,40 +1,47 @@
 module Codec.ReedSolomon where
 
-import Data.F256
-import Data.Euclideo
-import Data.Matrix
+import Data.GF256
+import Data.Matrix.Auxiliar
 import Data.Either
-import Data.BuscaInversa
+import Data.Poly
 
 
 --            RS n k r
 data RSCode = RS 
               {
-               palabras :: Int,    -- n = numero de palabras totales
-               datos :: Int,       -- k = numero de palabras de datos
-               correcciones :: Int -- r = capacidad de coreccion
+               totalCwCount :: Int,        -- n = numero de palabras totales
+               dataCwCount :: Int,         -- k = numero de palabras de datos
+               correctionCapacity :: Int -- r = capacidad de coreccion 
               } 
    deriving Show
 
-detectores :: RSCode -> Int
-detectores rs = (palabras rs) - (datos rs)
+--   dataCw -> ecCw -> mPCw -> RSCode 
+rsCode :: Int -> Int -> Int -> RSCode
+rsCode d e m = RS (d+e) d $ div (e-m) 2
+
+ecCwCount :: RSCode -> Int -- Detectores
+ecCwCount rs = (totalCwCount rs) - (dataCwCount rs)
 
 
-polGenerador :: RSCode -> Polinomio F256
-polGenerador = go . detectores where
-   go 1 = x + C generador
-   go n = (P 1 1 $ C generador^n)* (go (n-1))
+polyGen :: RSCode -> Poly GF256
+polyGen rs = product [x + (constPoly $ discExp n) 
+                          | n<-[0..ecCwCount rs - 1]] 
 
-codifica :: RSCode -> Polinomio F256 -> Polinomio F256
-codifica rs p = q-(resto q $ polGenerador rs) 
-   where q = p*(P 1 (detectores rs) 0)
 
-decodifica :: RSCode -> Polinomio F256 -> Polinomio F256
-decodifica rs p = creaPolinomio $ take ((length xs) - (detectores rs)) $ xs
-   where xs = coeficientes p 
+ecCodewords :: RSCode -> [GF256] -> [GF256] 
+ecCodewords rs ps = drop 1 $ coefs $ (monomial 1 (ecCwCount rs) +) $ 
+                    polyMod q $ polyGen rs 
+   where p = makePoly ps
+         q = p*(monomial 1 (ecCwCount rs))
+{-         
+decode :: RSCode -> Poly GF256 -> Poly GF256
+decode rs p = makePoly $ take ((length xs) - (correctionWords rs)) $ xs
+   where xs = coefs p 
+
 
 sindromes :: RSCode -> Polinomio F256 -> [F256]
-sindromes rs p = [evalua p $ generador^n | n<-[1..2*correcciones rs]]
+sindromes rs p = [evalua p $ generador^n | 
+                 n<-[1..correctionWords]]
 
 corrigeErrores :: RSCode -> Polinomio F256 -> Polinomio F256
 corrigeErrores rs p = p- if all (0==) s then 0 else (deListas errores pos)
@@ -54,6 +61,7 @@ expPosErrores rs s = buscaSoluciones . creaPolinomio . (1:) .
          inv = menorInvertible $ (matrix d1 d1) $ 
                (\(x,y) -> (s !! (x+y-2)))
          b = matrix d2 1 (\(x,_) -> -(s !!(d2+x-1)))
+-}
    
 -----------------------------------------------------------------------------
 

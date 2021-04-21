@@ -1,19 +1,39 @@
-module Codec.QR.Mask where
+module Codec.QR.Mask 
+   (
+    applyMask
+   ) where
 
-mask :: Int  -> ((Int,Int) -> Bool)
-mask 0 = (\(i,j) -> mod (i+j) 2 == 0)
-mask 1 = (\(i,j) -> mod i 2 == 0)
-mask 2 = (\(i,j) -> mod j 3 == 0)
-mask 3 = (\(i,j) -> mod (i+j) 3 == 0)
-mask 4 = (\(i,j) -> mod ((div i 2)+(div j 3)) 2 == 0)
-mask 5 = (\(i,j) -> (mod (i*j) 2) + (mod (i*j) 3) == 0)
-mask 6 = (\(i,j) -> mod ((mod (i*j) 2) + (mod (i*j) 3)) 2 == 0)
-mask 7 = (\(i,j) -> mod ((mod (i+j) 2) + (mod (i*j) 3)) 2 == 0)
-mask x = error $ "Undefined mask: "++ show x
+import Codec.QR.Module
+import Codec.QR.Version
+import Codec.QR.Core
 
-maskMicro :: Int -> ((Int,Int) -> Bool)
-maskMicro 0 = mask 1
-maskMicro 1 = mask 4
-maskMicro 2 = mask 6
-maskMicro 3 = mask 7
-maskMicro x = error $ "undefined micro mask: "++show x
+applyMask :: Int -> Version -> QR -> QR
+applyMask n v = mapTable f
+   where t = reservedMod v
+         f p | t ! p = id
+             | otherwise = xor (mask n v p)
+
+mask :: Int -> Version -> (Module -> Bool)
+mask n = kindVersionCase (maskMV n) (maskV n)
+
+maskV :: Int  -> (Module -> Bool)
+maskV n = case n of
+  0 -> (\(i,j) -> mod (i+j) 2 == 0)
+  1 -> (\(i,j) -> mod i 2 == 0)
+  2 -> (\(i,j) -> mod j 3 == 0)
+  3 -> (\(i,j) -> mod (i+j) 3 == 0)
+  4 -> (\(i,j) -> mod ((div i 2)+(div j 3)) 2 == 0)
+  5 -> (\(i,j) -> (mod (i*j) 2) + (mod (i*j) 3) == 0)
+  6 -> (\(i,j) -> mod ((mod (i*j) 2) + (mod (i*j) 3)) 2 == 0)
+  7 -> (\(i,j) -> mod ((mod (i+j) 2) + (mod (i*j) 3)) 2 == 0)
+  _ -> error $ "Undefined mask: "++ show n
+
+
+maskMV :: Int -> (Module -> Bool)
+maskMV n = case n of
+  0 -> maskV 1
+  1 -> maskV 4
+  2 -> maskV 6
+  3 -> maskV 7
+  _ -> error $ "undefined micro mask: "++show n
+

@@ -1,22 +1,22 @@
 module Data.BitString where
 
-import Data.F2
+import Data.Word
 
-type BitString = [F2]
+type BitString = [Bool]
 
 integralToBitString :: (Integral a) => a -> Int  -> BitString
 integralToBitString x n = go x n []
-   where go _ 0 xs = xs
-         go x n xs = go d (n-1) ((if m==1 then 1 else 0):xs)
+   where go 0 0 xs = xs
+         go _ 0 xs = error "integralToBitString necesita mas espacio para expresar un numero"
+         go x n xs = go d (n-1) $ (m==1):xs
             where (d,m) = divMod x 2
 
---toBitString no comprueba si necesitas mas digitos de los que le das
 
-fromBitString :: (Num a) => BitString -> a
-fromBitString bs = go bs 0
+bitStringToNum :: (Num a) => BitString -> a
+bitStringToNum bs = go bs 0
    where go [] a = a
          go (b:bs) a = go bs (2*a+x)
-            where x | b==1      = 1
+            where x | b         = 1
                     | otherwise = 0
 
 -- *Main> quickCheck (\x -> fromBitString (toBitString (abs x) (abs x)) == (abs x))
