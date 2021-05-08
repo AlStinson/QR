@@ -1,6 +1,6 @@
 module Codec.QR.Version where
 
-import Data.Array
+import Data.Array as A
 import Codec.QR.Core
 
 import Codec.QR.ErrorCorrection.Level
@@ -46,8 +46,8 @@ isMicro :: Version -> Bool
 isMicro (MV _ _) = True
 isMicro  _       = False
 
-isShortLastWord :: Version -> Bool
-isShortLastWord = numberVersionCase odd (const False)
+shortLastword :: Version -> Bool
+shortLastword = numberVersionCase odd (const False)
 
 versionCase :: (Version -> a) -> (Version -> a) -> Version -> a 
 versionCase f g v | isMicro v = f v
@@ -62,6 +62,11 @@ kindVersionCase f g = versionCase (const f) (const g)
 sizeVersionCase ::  (Int -> a) -> (Int -> a) -> Version -> a
 sizeVersionCase f g = versionCase (f . size) (g . size)
 
+shortLastwordVersionCase :: (Version -> a) -> (Version -> a) -> Version -> a
+shortLastwordVersionCase f g = versionCase f' g
+   where f' v | shortLastword v = f v
+              | otherwise = g v
+
 size :: Version -> Int
 size = numberVersionCase sizeMV sizeV 
 
@@ -71,6 +76,9 @@ sizeV x = 17+4*x
 sizeMV :: Int -> Int
 sizeMV x = 9+2*x
 
+micros :: ECLevel -> [Version]
+micros e = range (MV 1 e, MV 4 e)
+
 ecLevelMinVersion :: ECLevel -> Version
 ecLevelMinVersion ecl = case ecl of
    L -> MV 1 L
@@ -79,7 +87,7 @@ ecLevelMinVersion ecl = case ecl of
    H -> V  1 H
 
 ecBlocks :: Array Version Int 
-ecBlocks = listArray (MV 1 L, V 40 H) 
+ecBlocks = A.listArray (MV 1 L, V 40 H) 
 -- MV 1, 2, 3, 4, V 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40  EC 
   [   1, 1, 1, 1,   1, 1, 1, 1, 1, 2, 2, 2, 2,  4,  4,  4,  4,  4,  6,  6,  6,  6,  7,  8,  8,  9,  9, 10, 12, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 24, 25, -- L
       u, 1, 1, 1,   1, 1, 1, 2, 2, 4, 4, 4, 5,  5,  5,  8,  9,  9, 10, 10, 11, 13, 14, 16, 17, 17, 18, 20, 21, 23, 25, 26, 28, 29, 31, 33, 35, 37, 38, 40, 43, 45, 47, 49, -- M
@@ -88,7 +96,7 @@ ecBlocks = listArray (MV 1 L, V 40 H)
   ] where u = undefined
 
 ecCwPerBlock :: Array Version Int
-ecCwPerBlock = listArray (MV 1 L,V 40 H)
+ecCwPerBlock = A.listArray (MV 1 L,V 40 H)
 -- MV 1, 2, 3,  4, V  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40  EC
   [   2, 5, 6,  8,    7, 10, 15, 20, 26, 18, 20, 24, 30, 18, 20, 24, 26, 30, 22, 24, 28, 30, 28, 28, 28, 28, 30, 30, 26, 28, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, -- L
       u, 6, 8, 10,   10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30, 22, 22, 24, 24, 28, 28, 26, 26, 26, 26, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, -- M

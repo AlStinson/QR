@@ -7,3 +7,4 @@ https://github.com/nayuki/QR-Code-generator
 https://github.com/micjahn/ZXing.Net/tree/master/Source/lib/qrcode
 https://gitlab.haskell.org/ghc/ghc/-/issues/7593
 https://docs.aspose.com/barcode/reportingservices/qr-or-micro-qr-barcode-encoding-selector/
+https://strokescribe.com/en/qr-code-excel-word-csharp-javascript.html

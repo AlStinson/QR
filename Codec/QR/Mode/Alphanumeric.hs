@@ -4,13 +4,13 @@ module Codec.QR.Mode.Alphanumeric
     modeIndicator,
     characterCountLength, 
     toBitString, 
-    minVersion
+    minVersion,
+    charCost
   ) where
 
+import Codec.QR.Core
 import Codec.QR.Version
 import Codec.QR.ErrorCorrection.Level
-import Data.BitString
-import Data.Char
 
 is :: Char -> Bool
 is c = elem c set
@@ -21,8 +21,8 @@ minVersion = MV 2
 modeIndicator :: Version -> BitString
 modeIndicator = numberVersionCase f g
    where f 1 = error "Alphanumeric not available in MV-1"
-         f n = integralToBitString 1 (n-1)
-         g _ = integralToBitString 2 4
+         f n = integralToBitString (n-1) 1
+         g _ = integralToBitString 4 2
 
 characterCountLength :: Version -> Int
 characterCountLength = numberVersionCase f g
@@ -34,12 +34,16 @@ characterCountLength = numberVersionCase f g
 
 toBitString :: String -> BitString
 toBitString [] = []
-toBitString (x:y:xs) = integralToBitString  
-                                   ((toInt x)*45+(toInt y)) 11 ++ 
-                                   toBitString xs
-toBitString (x:_) = integralToBitString (toInt x) 6
+toBitString (x:y:xs) = integralToBitString 11 ((toInt x)*45+(toInt y)) ++ 
+                       toBitString xs
+toBitString (x:_) = integralToBitString 6 $ toInt x
 
 set = ['0'..'9']++['A'..'Z']++" $%*+-./:"
+
+charCost :: Int -> Int
+charCost d = case mod d 2 of
+   0 -> 5
+   1 -> 6
 
 toInt :: Char -> Int
 toInt = go set 0

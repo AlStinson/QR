@@ -4,13 +4,13 @@ module Codec.QR.Mode.Numeric
     modeIndicator,
     characterCountLength,
     toBitString,
-    minVersion
+    minVersion,
+    charCost
    ) where
 
+import Codec.QR.Core
 import Codec.QR.Version
-import Codec.QR.ErrorCorrection.Level
-
-import Data.BitString 
+import Codec.QR.ErrorCorrection.Level 
 
 is :: Char -> Bool
 is c = elem c ['0'..'9']
@@ -20,8 +20,8 @@ minVersion = MV 1
 
 modeIndicator :: Version -> BitString
 modeIndicator = numberVersionCase f g 
-   where f n = integralToBitString 0 (n-1)
-         g _ = integralToBitString 1 4
+   where f n = integralToBitString (n-1) 0
+         g _ = integralToBitString 4 1
 
 characterCountLength :: Version -> Int
 characterCountLength = numberVersionCase f g
@@ -32,7 +32,13 @@ characterCountLength = numberVersionCase f g
 
 toBitString :: String -> BitString
 toBitString [] = []
-toBitString (x:y:z:xs) = (integralToBitString (read [x,y,z] :: Int)  10)
+toBitString (x:y:z:xs) = (integralToBitString 10 (read [x,y,z] :: Int))
                          ++ toBitString xs  
-toBitString (x:y:_) = integralToBitString (read [x,y] :: Int)  7 
-toBitString (x:_) = integralToBitString (read [x] :: Int)  4 
+toBitString (x:y:_) = integralToBitString 7 (read [x,y] :: Int) 
+toBitString (x:_) = integralToBitString 4 (read [x] :: Int) 
+
+charCost :: Int -> Int
+charCost d = case mod d 3 of
+   0 -> 3
+   1 -> 4
+   2 -> 3

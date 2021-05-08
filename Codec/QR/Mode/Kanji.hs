@@ -8,11 +8,8 @@ module Codec.QR.Mode.Kanji
    ) where
 
 import Codec.QR.Core
-
 import Codec.QR.Version
 import Codec.QR.ErrorCorrection.Level
-import Data.Char
-import Data.BitString
 
 is :: Char -> Bool
 is c | o < 0x10000 = kanjiTable ! o
@@ -36,8 +33,8 @@ modeIndicator :: Version -> BitString
 modeIndicator = numberVersionCase f g
    where f 1 = error "Kanji mode not available in MV-1"
          f 2 = error "Kanji mode not available in MV-2"
-         f n = integralToBitString 3 (n-1)
-         g _ = integralToBitString 8 4
+         f n = integralToBitString (n-1) 3
+         g _ = integralToBitString 4 8
 
 characterCountLength :: Version -> Int
 characterCountLength = numberVersionCase f g
@@ -50,7 +47,11 @@ characterCountLength = numberVersionCase f g
 
 toBitString :: String -> BitString
 toBitString [] = []
+{-
 toBitString (x:y:xs) = integralToBitString (b1*0xC0+b2) 13 ++toBitString xs 
    where o = (ord x)*0x100 + ord y
          (b1,b2) = divMod (o - if o>0xE040 then 0xC140 else 0x8140) 0x100
-         
+         -}
+toBitString (x:xs) = integralToBitString 13 (b1*0xc0+b2) ++ toBitString xs
+   where o = ord x
+         (b1,b2) = divMod (o - if o>0xE040 then 0xC140 else 0x8140) 0x100

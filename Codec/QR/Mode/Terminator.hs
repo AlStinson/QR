@@ -1,13 +1,10 @@
 module Codec.QR.Mode.Terminator where
 
+import Codec.QR.Core
 import Codec.QR.Version
-import Data.BitString
 
-terminator :: Int -> Version -> BitString
-terminator n = integralToBitString 0 . terminatorLength n
--- no puedo quitar la n ??? 
+terminator :: Version -> BitString
+terminator v = integralToBitString (terminatorLength v) 0
 
-terminatorLength :: Int -> Version -> Int
-terminatorLength n = numberVersionCase f g
-   where f v = min (2*v+1) n
-         g _ = min 4 n
+terminatorLength :: Version -> Int
+terminatorLength = numberVersionCase (\v -> 1+2*v) (const 4)

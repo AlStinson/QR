@@ -1,7 +1,5 @@
 module Data.Table 
    ( 
-     module Data.Array,
-
      Table,
      table, 
      listTable,

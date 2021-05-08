@@ -1,8 +1,10 @@
 module Codec.QR.Mode.ECI where
 
-import Data.BitString
+import Codec.QR.Core
 
 type ECI = Int -- ECI INDICATOR
+
+
 
 eciDesignatorLength :: ECI -> Int
 eciDesignatorLength n | n < 127   = 7

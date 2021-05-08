@@ -3,6 +3,7 @@ module Codec.QR.Format where
 import Codec.QR.Core
 import Codec.QR.Version
 import Codec.QR.ErrorCorrection.Level
+import Codec.QR.Mask
 
 import Data.Poly
 
@@ -14,7 +15,7 @@ decodeFormatMV = undefined
 encodeFormat :: Version -> Mask -> BitString
 encodeFormat v m = zipWith (+) (infoMask v) $ encodeWithoutMask $ 
                    versionCase vIndicatorMV (ecLevelIndicator . ecl) v ++ 
-                   integralToBitString m (kindVersionCase 2 3 v)
+                   integralToBitString (kindVersionCase 2 3 v) m
 
 encodeWithoutMask :: BitString -> BitString
 encodeWithoutMask s = (s ++) $ drop 1 $ coefs $ 

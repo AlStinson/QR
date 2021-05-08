@@ -1,14 +1,18 @@
 module Codec.QR.Mask 
    (
+    Mask,
     applyMask
    ) where
 
 import Codec.QR.Module
 import Codec.QR.Version
 import Codec.QR.Core
+import Codec.QR.QR
+
+type Mask = Int
 
 applyMask :: Int -> Version -> QR -> QR
-applyMask n v = mapTable f
+applyMask n v = fArray f
    where t = reservedMod v
          f p | t ! p = id
              | otherwise = xor (mask n v p)

@@ -3,6 +3,8 @@ module Codec.QR.Module where
 import Codec.QR.Version
 import Codec.QR.Core
 
+type Module = (Int,Int)
+
 totalModCount :: Version -> Int
 totalModCount v = (size v)^2
 
@@ -48,13 +50,16 @@ reservedModCountV = listArray (1, 40)
 nonReservedModCount :: Version -> Int
 nonReservedModCount v = totalModCount v - reservedModCount v
 
+nonReservedCwCount :: Version -> Int
+nonReservedCwCount v = dataCwCount v + ecCwCount v
+
 dataModCount :: Version -> Int
 dataModCount v = nonReservedModCount v - (ecCwCount v)*8 - 
                  remainderBitsCount v
 
 dataCwCount :: Version -> Int 
 dataCwCount v = div (dataModCount v) 8 
-              + if isShortLastWord v then 1 else 0
+              + if shortLastword v then 1 else 0
 
 ecCwCount :: Version -> Int
 ecCwCount v = (ecBlocks ! v)*(ecCwPerBlock ! v)
@@ -67,7 +72,6 @@ remainderBitsCount = versionCase f g
 remainderBits :: Version -> BitString
 remainderBits v = take (remainderBitsCount v) $ repeat False
 
--- Arreglar para MV
 nonReservedMod :: Version -> [Module]
 nonReservedMod v = (s1,s1):(go (s1,s1))
    where t = reservedMod v
@@ -79,7 +83,7 @@ nonReservedMod v = (s1,s1):(go (s1,s1))
                        (isMicro v, y>6, mod (y+s) 4, x, x==s1) (x,y)
                   s = if isMicro v && odd (number v) then 2 else 0
 
---            (isMicro v, y>6, mod y 4, x  , x==s-1)
+           -- (isMicro v, y>6, mod y 4, x  , x==s-1)
 nextModule :: (Bool     , Bool, Int    , Int, Bool  ) -> Module -> Module
 
 nextModule (_, True , 0, _, _    ) (x,y) = (x  , y-1)
@@ -163,3 +167,26 @@ reservedArea = placeModules f
    where f _ _ = False
 
 
+blankQR :: Version -> [(Module,Bool)]
+blankQR = numberVersionCase blankQRMV blankQRV
+
+blankQRV :: Int -> [(Module,Bool)]
+blankQRV v = concat $ 
+   [finderPattern 0 0, finderPattern 0 (s-7), finderPattern (s-7) 0,
+    vWhite 0 7, vWhite 0 (s-8), vWhite (s-7) 7,
+    hWhite 7 0, hWhite 7 (s-8), hWhite (s-8) 0,
+    blackAndWhite 1 (s-16) 6 8, blackAndWhite (s-16) 1 8 6,
+    blackAndWhite 1 1 (s-8) 8, reservedArea 6 1 0 8, 
+    reservedArea 2 1 7 8, reservedArea 1 1 8 7, reservedArea 1 6 8 0,
+    reservedArea 1 8 8 (s-8), reservedArea 7 1 (s-7) 8,
+    if s>=45 then reservedArea 6 3 0 (s-11) else [],
+    if s>=45 then reservedArea 3 6 (s-11) 0 else []] ++
+    [alignmentPatter (i-2) (j-2) | (i,j)<- alignmentPatternLocationV v] 
+   where s = sizeV v
+
+blankQRMV :: Int -> [(Module,Bool)]
+blankQRMV v = concat $ 
+   [finderPattern 0 0, vWhite 0 7, hWhite 7 0, 
+    blackAndWhite 1 (s-8) 0 8, blackAndWhite (s-8) 1 8 0,
+    vWhite 1 8, hWhite 8 1]
+   where s = sizeMV v

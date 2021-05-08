@@ -4,14 +4,13 @@ module Codec.QR.Mode.Byte
     modeIndicator,
     characterCountLength,
     toBitString,
-    minVersion
+    minVersion,
+    charCost
    ) where
 
+import Codec.QR.Core
 import Codec.QR.Version
 import Codec.QR.ErrorCorrection.Level
-
-import Data.Char
-import Data.BitString
 
 is :: Char -> Bool
 is c = ord c < 256
@@ -23,7 +22,7 @@ modeIndicator :: Version -> BitString
 modeIndicator = numberVersionCase f g
    where f 1 = error "Byte mode not available in MV-1"
          f 2 = error "Byte mode not available in MV-2"
-         f n = integralToBitString 2 (n-1) 
+         f n = integralToBitString (n-1) 2 
          g _ = integralToBitString 4 4
         
 
@@ -37,5 +36,7 @@ characterCountLength = numberVersionCase f g
 
 toBitString :: String -> BitString
 toBitString [] = []
-toBitString (x:xs) = integralToBitString (ord x) 8 ++
-                         toBitString xs 
+toBitString (x:xs) = integralToBitString 8 (ord x) ++ toBitString xs 
+
+charCost :: Int -> Int
+charCost = const 8

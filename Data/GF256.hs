@@ -6,7 +6,10 @@ import Data.Array (Array, listArray, (!))
 import Data.Ratio (numerator, denominator)
 
 newtype GF256 = GF256 {unpack :: Word8}
-   deriving (Eq, Show, Ord)
+   deriving (Eq, Ord)
+
+instance Show GF256 where
+   show = show . unpack
 
 instance Num GF256 where
    (+) x y = GF256 $ gfSum (unpack x) (unpack y)
@@ -32,6 +35,12 @@ instance Bounded GF256 where
 instance Enum GF256 where
    toEnum = GF256 . toEnum
    fromEnum = fromEnum . unpack
+
+instance Integral GF256 where
+   toInteger = toInteger . unpack
+   quotRem x y = (GF256 q, GF256 r)
+      where (q,r) = quotRem (unpack x) (unpack y)
+   divMod = quotRem
 
 gfSum :: Word8 -> Word8 -> Word8
 gfSum = xor
