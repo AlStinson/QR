@@ -16,7 +16,6 @@ import Codec.QR.QR
 import Codec.QR.Mask
 import Codec.QR.Image
 
-
 makeQR :: String -> ECLevel -> QR
 makeQR s e = makeQRWith (Left s) (Left e) Nothing
 

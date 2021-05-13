@@ -1,18 +1,59 @@
-module Codec.QR.Image where
+module Codec.QR.Image 
+   (
+    Extension (..), 
+    saveImage
+   )  where
 
 import Codec.QR.Core
 import Codec.QR.QR
 import Codec.Picture
 
 
--- 
+data Extension = PNG | JPG | BMP | GIF | TIFF | HDR | SVG
 
-createImage :: FilePath -> Int -> Int -> QR -> IO()
-createImage path scale border qr = savePngImage path $ 
-                                   ImageY8 $ generateImage f p p
-   where s = getSize qr
-         p = (scale*) $ s + 2*border + 1
-         f x y | and [x'>=0,y'>=0,x'<=s,y'<=s] = if qr ! (y',x') then 0 else 255
+-- Incluir colores y repasar codigo
+
+saveImage :: Extension -> FilePath -> String -> Int -> Int -> QR -> IO()
+saveImage ext path name size minBorder qr = case ext of
+        PNG -> savePngImage (path++name++".png") i 
+        JPG -> saveJpgImage 100 (path++name++".jpg") i
+        BMP -> saveBmpImage (path++name++".bmp") i
+        GIF -> either error id $ saveGifImage (path++name++".gif") i
+        TIFF -> saveTiffImage (path++name++".tiff") i
+        HDR -> saveRadianceImage (path++name++".hdr") i
+        SVG -> createSVG (path++name++".svg") size minBorder qr
+   where i = createImage size minBorder qr
+
+
+createImage :: Int -> Int -> QR -> DynamicImage
+createImage size minBorder qr = if size<minSize
+                                then error $ "Min size is "++show
+                                     minSize++" pixels"
+                                else ImageY8 $ generateImage f size size
+   where minSize = qrSize+2*minBound
+         qrSize = getSize qr
+         (scale,restBorder) = divMod size (qrSize+2*minBorder)
+         border = minBorder*scale + (div restBorder 2)
+         f x y | and [x'>=0,y'>=0,x'<=qrSize,y'<=qrSize] = if qr ! (y',x') then 0 else 255
                | otherwise = 255
-            where x' = (div x scale) - border
-                  y' = (div y scale) - border
+            where x' = div (x-border) scale
+                  y' = div (y-border) scale
+
+createSVG :: FilePath -> Int -> Int -> QR -> IO()
+createSVG path size minBorder qr = writeFile path $
+  "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\""++
+      " width=\""++show size++"\" height=\""++show size++"\">\n" ++
+  "<rect width=\""++show size++"\" height=\""++show size++
+         "\" style=\"fill:rgb(255,255,255)\" />\n"++
+  foldl go "" (assocs qr)++
+  "</svg>"
+   where qrSize = getSize qr
+         (scale,restBorder) = divMod size (qrSize+2*minBorder)
+         border = minBorder*scale + (div restBorder 2)
+         go xs ((x,y),b) = xs ++ (if b then "<rect x=\""++ show (scale * (y + border))++ 
+                                           "\" y=\""++ show (scale * (x + border))++
+                                       "\" width=\""++ show scale ++
+                                      "\" height=\""++ show scale ++
+                                       "\" style=\"fill:rgb(0,0,0)\" />\n"
+                                  else "") 
+ 
