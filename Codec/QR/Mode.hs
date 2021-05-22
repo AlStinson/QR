@@ -1,35 +1,17 @@
-module Codec.QR.Mode 
-   (
-    module Codec.QR.Mode.Terminator,
+module Codec.QR.Mode where
 
-    DataSet(..),
-    ModeSelect,
-    InterSegment,
-    exclusiveSet,
-    selectModes,
-    preEncodeString,
-    encodeString,
-    costs,
-    bitLength,
-    modeIndicatorLength, 
-    minVersion, 
-    modeIndicator,
-    characterCountLength,
-    toBitString
-   ) where
-
-import Codec.QR.Core
-
-import Codec.QR.ErrorCorrection.Level
 import Codec.QR.Version
-
 import qualified Codec.QR.Mode.Numeric as Numeric
 import qualified Codec.QR.Mode.Alphanumeric as Alphanumeric
-import qualified Codec.QR.Mode.Kanji as Kanji
 import qualified Codec.QR.Mode.Byte as Byte
 import Codec.QR.Mode.Terminator
 
-data DataSet = Numeric | Alphanumeric | Byte | Kanji 
+import Data.BitString
+
+import Data.Maybe
+import Data.List
+
+data DataSet = Numeric | Alphanumeric | Byte 
    deriving (Eq,Ord,Enum,Show)
 
 type ModeSelect = (DataSet,Int)
@@ -55,14 +37,14 @@ applyModes :: String -> [ModeSelect] -> [InterSegment]
 applyModes [] [] = []
 applyModes xs ((d,n):ys) = let (a,b) = splitAt n xs
                                s = toBitString d a
-                            in (d,s,length s,n):(applyModes b ys)
+                           in (d,s,length s,n):(applyModes b ys)
 
 
 exclusiveSet :: Char -> DataSet
 exclusiveSet c | Numeric.is c = Numeric
                | Alphanumeric.is c = Alphanumeric
-               | Kanji.is c = Kanji
                | Byte.is c = Byte
+               | otherwise = error $ "Non valid character: "++show c
 
 posibleSet :: DataSet -> Version -> [DataSet]
 posibleSet d = numberVersionCase 
@@ -90,10 +72,36 @@ encodeString v = foldr f $ terminator v
    where f (x,y,z,w) bs = modeIndicator x v ++ (integralToBitString 
                         (characterCountLength x v) w) ++ y ++ bs
 
-costs :: ECLevel -> (Version -> (Int,[InterSegment])) ->
+decodeString :: Version -> BitString -> Maybe String
+decodeString v xs = do modes <- unSelectModes v xs
+                       let list = map (\(x,y) -> fromBitString x y) modes
+                       if any isNothing list then Nothing 
+                       else Just $ concat $ catMaybes list 
+unSelectModes :: Version -> BitString -> Maybe [(DataSet,BitString)]
+unSelectModes v xs = go [] xs
+   where go ys xs | isPrefixOf (terminator v) xs = Just $ reverse ys
+                  | all not xs = Just $ reverse ys
+                  | null mode = Nothing
+                  | otherwise = let (a,b) = splitBitString v zs d
+                                in go ((d,a):ys) b
+            where mode = detectMode v xs
+                  (d,zs) = head mode
+
+detectMode :: Version -> BitString -> [(DataSet,BitString)]
+detectMode v xs = catMaybes $ fmap 
+   (\x -> fmap (\y -> (x,y)) $ stripPrefix (modeIndicator x v) xs)
+   [Numeric,Alphanumeric,Byte]
+         
+splitBitString :: Version -> BitString -> DataSet ->
+                 (BitString, BitString)
+splitBitString v xs d = flip splitAt b $  
+                        sum [charCost d i | i<-[1 .. bitStringToNum a]]
+   where (a,b) = splitAt (characterCountLength d v) xs
+
+costs :: (Version -> (Int,[InterSegment])) ->
          [(Int,[InterSegment])]
-costs e f = [f v | v<-micros e] ++ replicate 9  (f $ V 1  e) ++
-      replicate 17 (f $ V 10 e) ++ replicate 14 (f $ V 27 e)
+costs f = [f v | v<-micros] ++ replicate 9  (f $ V 1) ++
+      replicate 17 (f $ V 10) ++ replicate 14 (f $ V 27)
  
 bitLength :: Version -> [InterSegment] -> Int
 bitLength v = foldl f 0
@@ -115,27 +123,28 @@ charCost x = case x of
    Alphanumeric -> Alphanumeric.charCost
    Byte -> Byte.charCost
 
-minVersion :: DataSet -> ECLevel -> Version
+minVersion :: DataSet -> Version
 minVersion x = case x of
   Numeric -> Numeric.minVersion
   Alphanumeric -> Alphanumeric.minVersion
-  Kanji -> Kanji.minVersion
   Byte -> Byte.minVersion
 
 modeIndicator :: DataSet -> Version -> BitString
 modeIndicator Numeric = Numeric.modeIndicator
 modeIndicator Alphanumeric = Alphanumeric.modeIndicator
 modeIndicator Byte = Byte.modeIndicator
-modeIndicator Kanji = Kanji.modeIndicator
 
 characterCountLength :: DataSet -> Version -> Int
 characterCountLength Numeric      = Numeric.characterCountLength 
 characterCountLength Alphanumeric = Alphanumeric.characterCountLength
 characterCountLength Byte         = Byte.characterCountLength
-characterCountLength Kanji        = Kanji.characterCountLength
 
 toBitString :: DataSet -> String -> BitString
 toBitString Numeric = Numeric.toBitString
 toBitString Alphanumeric = Alphanumeric.toBitString
 toBitString Byte = Byte.toBitString
-toBitString Kanji = Kanji.toBitString
+
+fromBitString :: DataSet -> BitString -> Maybe String
+fromBitString Numeric = Numeric.fromBitString
+fromBitString Alphanumeric = Alphanumeric.fromBitString
+fromBitString Byte = Byte.fromBitString

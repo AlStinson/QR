@@ -4,18 +4,21 @@ module Codec.QR.Mode.Byte
     modeIndicator,
     characterCountLength,
     toBitString,
+    fromBitString,
     minVersion,
     charCost
-   ) where
+   ) where 
 
-import Codec.QR.Core
 import Codec.QR.Version
-import Codec.QR.ErrorCorrection.Level
+
+import Data.BitString
+
+import Data.Char
 
 is :: Char -> Bool
 is c = ord c < 256
 
-minVersion :: ECLevel -> Version
+minVersion :: Version
 minVersion = MV 3
 
 modeIndicator :: Version -> BitString
@@ -35,8 +38,14 @@ characterCountLength = numberVersionCase f g
              | n<=40 = 16
 
 toBitString :: String -> BitString
-toBitString [] = []
-toBitString (x:xs) = integralToBitString 8 (ord x) ++ toBitString xs 
+toBitString = integralsToBitString (repeat 8) . map ord
+
+
+fromBitString :: BitString -> Maybe String
+fromBitString xs | mod (length xs) 8 == 0 = Just $ map chr $
+                                            bitStringToNums (repeat 8) xs
+                 | otherwise              = Nothing
+
 
 charCost :: Int -> Int
 charCost = const 8

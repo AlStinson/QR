@@ -1,16 +1,10 @@
 module Codec.QR.Version.Information where
 
-import Codec.QR.Core
 import Codec.QR.Version
-import Codec.QR.ErrorCorrection.Level
 import Codec.QR.Mask
 
 import Data.Poly
-
-decodeFormatV :: BitString -> (ECLevel, Mask) 
-decodeFormatV s = undefined
-decodeFormatMV = undefined
-
+import Data.BitString
 
 encodeVersion :: Version -> BitString
 encodeVersion v = (s ++) $ drop 1 $ coefs $ 

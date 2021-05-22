@@ -1,12 +1,18 @@
- {-# LANGUAGE 
-     FlexibleInstances, 
-     MultiParamTypeClasses  
- #-}
+{-# LANGUAGE 
+    FlexibleInstances, 
+    MultiParamTypeClasses  
+#-}
 
-module Data.Array.QRArray where
+module Data.Array.QRArray 
+   (
+    module Data.Array.QRArray,
+    module Data.Array.Base,
+    module Data.Ix
+   ) where
 
 import Data.Array.IArray
 import Data.Array.Base
+import Data.Ix
 
 newtype QRArray i e = QR {getArray :: Array i e}
 

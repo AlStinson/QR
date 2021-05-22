@@ -1,67 +1,77 @@
 module Codec.QR where
 
-import Codec.QR.Core
-
 import Codec.QR.Mode
 import Codec.QR.ErrorCorrection
-import Codec.QR.ErrorCorrection.Level
+import Codec.QR.ErrorCorrectionLevel
 import Codec.QR.Score
 import Codec.QR.Version
 import Codec.QR.Version.Information
 import Codec.QR.Module
+import Codec.QR.Module.Count
+import Codec.QR.Module.FunctionPatterns
 import Codec.QR.Format
 import Codec.QR.QR
-
-
 import Codec.QR.Mask
 import Codec.QR.Image
 
+import Data.BitString
+import Data.GF256
+import Data.Bits (xor)
+
+prueba s = decodeQR . makeQR s
+
+decodeQR :: QR -> Maybe String
+decodeQR qr = do 
+   v <- getVersion qr
+   (e,m) <- getFormatInformation qr v
+   cwString <- decodeData e v $ bitStringToNums (wordsLength e v) $  
+               take (nonReservedModCount v - remainderBitsCount v) $ 
+               [ xor (qr ! p) $ mask m v p | p<-nonReservedMod v]
+   decodeString v $ integralsToBitString (wordsLength e v) cwString
+ 
+
 makeQR :: String -> ECLevel -> QR
-makeQR s e = makeQRWith (Left s) (Left e) Nothing
+makeQR s e = makeQRWith (Left s) e Nothing Nothing
 
 makeQRWith :: Either String [(DataSet,String)] -> 
-              Either ECLevel Version -> 
+              ECLevel -> 
+              Maybe Version -> 
               Maybe Mask -> 
 --              Maybe Encoding -> 
               QR 
-makeQRWith a b c =  (qr //) $ 
+makeQRWith a e b c =  (qr //) $ 
                     (zip (versionLocation v) (vi++vi)) ++
                     (zip (formatLocation v) (fi++fi))
-   where e = either id ecl b
-         minV = maximum [ecLevelMinVersion e, either (MV 1) id b, 
-                         flip minVersion e $ maximum $ 
-                          either (map exclusiveSet) (map fst) a]
+   where minV = maximum [ecLevelMinVersion e, maybe (MV 1) id b, 
+                         minVersion $ maximum $ either 
+                          (map exclusiveSet) (map fst) a]
          ls = let g x v = let pre = preEncodeString x
-                         in (bitLength v pre,pre)
-              in drop (index (MV 1 e, V 40 e) minV) $ 
-                 costs e $ either (flip selectModes) g a
-         v = findVersion minV $ map fst ls
+                          in (bitLength v pre,pre)
+              in drop (index (MV 1, V 40) minV) $ 
+                 costs $ either (flip selectModes) g a
+         v = findVersion e minV $ map fst ls
          s = size v
-         pre = snd $ ls !! (index (minV, V 40 e) v)
+         pre = snd $ ls !! (index (minV, V 40) v)
          unMaskQR = array ((0,0),(s-1,s-1)) $ (blankQR v ++) $
-                    zip (nonReservedMod v) $ makeBitString pre v ++ 
+                    zip (nonReservedMod v) $ makeBitString pre e v ++ 
                                              remainderBits v
-         (qr,m) = maybe (betterScore v unMaskQR) 
-                        (\x -> (applyMask x v unMaskQR,x)) c
-         fi = encodeFormat v m
+         mask = maybe (betterScore unMaskQR v) id c
+         qr = applyMask mask v unMaskQR
+         fi = encodeFormat e v mask
          vi = encodeVersion v
 
 
+makeBitString :: [InterSegment] -> ECLevel -> Version -> BitString
+makeBitString pre e v = integralsToBitString (wordsLength e v) $
+                        encodeData e v $ cw ++ (padCodewords (c - length cw) v)
+   where cw = fst $ splitAt c $ bitStringToNums (wordsLength e v) $
+              encodeString v pre
+         c = dataCwCount e v
 
-makeBitString :: [InterSegment] -> Version -> BitString
-makeBitString pre v = integralsToBitString (wordsLength v) $ encodeData v $ 
-                      cw ++ (padCodewords (c - length cw) v)
-   where m = dataModCount v
-         c = dataCwCount v
-         m' = 8*(div m 8)
-         (a,b) = splitAt m' $ take m $ encodeString v pre
-         cw = bitStringToNums 8 a ++ bitStringToNums 4 b
-         en = encodeData v $ cw ++ (padCodewords (c - length cw) v)
-
-findVersion :: Version -> [Int] -> Version
-findVersion m = go (range (m, V 40 $ ecl m)) 
+findVersion :: ECLevel -> Version -> [Int] -> Version
+findVersion e m = go $ range (m,V 40) 
    where go [] [] = error "QR codes cant hold that amount of data"
-         go (v:vs) (c:cs) | c <= dataModCount v = v
+         go (v:vs) (c:cs) | c <= dataModCount e v = v
                           | otherwise = go vs cs
 
 padCodewords :: Int -> Version -> [GF256]
@@ -70,8 +80,12 @@ padCodewords n =  shortLastwordVersionCase
                    (const $ take n c) 
    where c = cycle [236,17]
 
-wordsLength :: Version -> [Int]
-wordsLength = shortLastwordVersionCase
+wordsLength :: ECLevel -> Version -> [Int]
+wordsLength e = shortLastwordVersionCase
                f (const c)
-   where f v = take (dataCwCount v - 1) c ++ (4:c)
+   where f v = take (dataCwCount e v - 1) c ++ (4:c) ++ repeat 8
          c = repeat 8
+
+maxECLevel :: Version -> ECLevel
+maxECLevel = let f n = [L,M,M,Q] !! (n-1)
+             in numberVersionCase f $ const H

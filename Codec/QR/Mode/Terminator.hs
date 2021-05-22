@@ -1,9 +1,10 @@
 module Codec.QR.Mode.Terminator where
 
-import Codec.QR.Core
 import Codec.QR.Version
 
-terminator :: Version -> BitString
+import Data.BitString
+
+terminator :: Version ->  BitString
 terminator v = integralToBitString (terminatorLength v) 0
 
 terminatorLength :: Version -> Int

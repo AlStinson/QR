@@ -1,21 +1,22 @@
-module Codec.QR.Mode.Alphanumeric 
+module Codec.QR.Mode.Alphanumeric
   (
     is,
     modeIndicator,
     characterCountLength, 
     toBitString, 
+    fromBitString,
     minVersion,
     charCost
-  ) where
+  ) where 
 
-import Codec.QR.Core
 import Codec.QR.Version
-import Codec.QR.ErrorCorrection.Level
+
+import Data.BitString
 
 is :: Char -> Bool
 is c = elem c set
 
-minVersion :: ECLevel -> Version
+minVersion :: Version
 minVersion = MV 2
 
 modeIndicator :: Version -> BitString
@@ -37,6 +38,15 @@ toBitString [] = []
 toBitString (x:y:xs) = integralToBitString 11 ((toInt x)*45+(toInt y)) ++ 
                        toBitString xs
 toBitString (x:_) = integralToBitString 6 $ toInt x
+
+fromBitString :: BitString -> Maybe String
+fromBitString xs = go xs (length xs) []
+   where go xs n ys | n==0  = Just $ reverse ys
+                    | n==6  = go [] 0 $ (fromInt $ bitStringToNum xs):ys
+                    | n>=11 = go b (n-11) $ (fromInt m):(fromInt d):ys
+                    | otherwise = Nothing
+            where (a,b) = splitAt 11 xs
+                  (d,m) = divMod (bitStringToNum a) 45
 
 set = ['0'..'9']++['A'..'Z']++" $%*+-./:"
 

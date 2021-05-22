@@ -111,14 +111,16 @@ isZero :: (Eq a,Num a) => Poly a -> a -> Bool
 isZero p = (0==) . (eval p)
 
 searchZeros :: (Eq a, Num a, Enum a) => Poly a -> [a]
-searchZeros p = searchZerosBy p succ 1
+searchZeros p = searchZerosBy succ 1 p
 
-searchZerosBy :: (Eq a, Num a) => Poly a -> (a -> a) -> a -> [a]
-searchZerosBy p s i = go i (grade p)
+searchZerosBy :: (Eq a, Num a) => (a -> a) -> a -> Poly a -> [a]
+searchZerosBy s i p = go i (grade p)
    where go _ 0 = []
-         go r n | isZero p r = r:(go r' (n-1))
-                | otherwise  = go r' n
+         go r n | isZero p r = r:(next (n-1))
+                | otherwise  = next n
             where r' = s r
+                  next m = if r'==i then error "Zeros not founds"
+                                  else go r' m
 
 instance (Show a, Eq a, Num a) => Show (Poly a) where
    show x = go x 0

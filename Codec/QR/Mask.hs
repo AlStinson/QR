@@ -1,13 +1,11 @@
-module Codec.QR.Mask 
-   (
-    Mask,
-    applyMask
-   ) where
+module Codec.QR.Mask where
 
 import Codec.QR.Module
 import Codec.QR.Version
-import Codec.QR.Core
 import Codec.QR.QR
+
+import Data.Array.QRArray
+import Data.Bits (xor)
 
 type Mask = Int
 
@@ -41,3 +39,5 @@ maskMV n = case n of
   3 -> maskV 7
   _ -> error $ "undefined micro mask: "++show n
 
+maxMask :: Version -> Mask
+maxMask = kindVersionCase 3 7

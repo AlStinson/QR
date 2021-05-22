@@ -1,12 +1,24 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Codec.QR.QR where
+module Codec.QR.QR 
+   (
+    module Codec.QR.QR,
+    module Data.Array.QRArray
+   ) where
 
-import Codec.QR.Core
 import Codec.QR.Module
+import Codec.QR.Version
+
+import Data.Array.QRArray
 
 type QR = QRArray Module Bool
+
+getVersion :: QR -> Maybe Version
+getVersion qr = unSize $ (1+) $ getSize qr
+
+getVersionUnsafe :: QR -> Version
+getVersionUnsafe qr = unsafeUnSize $ (1+) $ getSize qr
 
 getSize :: QR -> Int
 getSize =  snd . snd . bounds

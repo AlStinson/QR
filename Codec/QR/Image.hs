@@ -4,7 +4,6 @@ module Codec.QR.Image
     saveImage
    )  where
 
-import Codec.QR.Core
 import Codec.QR.QR
 import Codec.Picture
 
@@ -21,7 +20,7 @@ saveImage ext path name size minBorder qr = case ext of
         GIF -> either error id $ saveGifImage (path++name++".gif") i
         TIFF -> saveTiffImage (path++name++".tiff") i
         HDR -> saveRadianceImage (path++name++".hdr") i
-        SVG -> createSVG (path++name++".svg") size minBorder qr
+ --       SVG -> createSVG (path++name++".svg") size minBorder qr
    where i = createImage size minBorder qr
 
 
@@ -30,15 +29,15 @@ createImage size minBorder qr = if size<minSize
                                 then error $ "Min size is "++show
                                      minSize++" pixels"
                                 else ImageY8 $ generateImage f size size
-   where minSize = qrSize+2*minBound
+   where minSize = qrSize+2*minBorder
          qrSize = getSize qr
-         (scale,restBorder) = divMod size (qrSize+2*minBorder)
+         (scale,restBorder) = divMod size minSize
          border = minBorder*scale + (div restBorder 2)
          f x y | and [x'>=0,y'>=0,x'<=qrSize,y'<=qrSize] = if qr ! (y',x') then 0 else 255
                | otherwise = 255
             where x' = div (x-border) scale
                   y' = div (y-border) scale
-
+{-
 createSVG :: FilePath -> Int -> Int -> QR -> IO()
 createSVG path size minBorder qr = writeFile path $
   "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\""++
@@ -56,4 +55,4 @@ createSVG path size minBorder qr = writeFile path $
                                       "\" height=\""++ show scale ++
                                        "\" style=\"fill:rgb(0,0,0)\" />\n"
                                   else "") 
- 
+ -}
