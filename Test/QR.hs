@@ -1,12 +1,13 @@
 {-# LANGUAGE TypeSynonymInstances,
-             FlexibleInstances #-}
+             FlexibleInstances,
+             CPP #-}
 
 module Test.QR where
 
 import Codec.QR
-import Codec.QR.ErrorCorrectionLevel
+import Codec.QR.ErrorCorrection.Level
 import Codec.QR.Version
-import Codec.QR.Mode
+import Codec.QR.String.Mode
 import Codec.QR.QR
 import Codec.QR.Module
 
@@ -17,11 +18,6 @@ data ArbitraryQR = A QR ECLevel String
 
 instance Show ArbitraryQR
    where show (A qr e xs) = show e++"\n"++show xs
-
-
-chooseEnum :: Enum a => (a, a) -> Gen a
-chooseEnum (a,b) = do n<-choose (fromEnum a, fromEnum b)
-                      return $ toEnum n 
 
 instance Arbitrary ECLevel where
    arbitrary = chooseEnum (L,H)

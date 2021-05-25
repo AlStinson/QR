@@ -1,61 +1,36 @@
 module Codec.QR.ErrorCorrection where
 
 import Codec.QR.Version
-import Codec.QR.ErrorCorrectionLevel
-import Codec.QR.Module.Count
-import qualified Codec.ReedSolomon as RS
-
+import Codec.QR.ErrorCorrection.Level
+import Codec.QR.Module.Count as QR.Count
+import Codec.ReedSolomon
 import Data.GF256
-
 import Data.Array
-import Data.List (transpose)
 
-rsCodes :: ECLevel -> Version -> [RS.RSCode]
-rsCodes e v = [RS.rsCode (d + if n>b-r then 1 else 0) f m  | n<-[1..b]]
-   where (d,r) = divMod (dataCwCount e v) b
+rsCodes :: ECLevel -> Version -> [RSCode]
+rsCodes e v = [rsCode (d + if n>b-r then 1 else 0) f m  | n<-[1..b]]
+   where (d,r) = divMod (QR.Count.dataCwCount e v) b
          f = ecCwPerBlock ! (e,v)
          m = miscodeProtectionCw e v
          b = ecBlocks ! (e,v)
 
-encodeData :: ECLevel -> Version -> [GF256] -> [GF256]
-encodeData e v s = assemble (map snd blocks) (map ecBlock blocks)
-   where blocks = blockDivision (rsCodes e v) s
+wordsLength :: ECLevel -> Version -> [Int]
+wordsLength e = shortLastwordVersionCase
+               f (const c)
+   where f v = take (QR.Count.dataCwCount e v - 1) c ++ (4:c) ++ repeat 8
+         c = repeat 8
 
 
-decodeData :: ECLevel -> Version -> [GF256] -> Maybe [GF256]
-decodeData e v xs = go [] $ zipWith RS.decode rs $ unAssemble blocks a b
-   where (a,b) = splitAt (dataCwCount e v) xs
-         blocks = ecBlocks ! (e,v)
-         rs = rsCodes e v
-         go xs [] = Just xs
-         go xs (Nothing:_) = Nothing
-         go xs ((Just ys):zs) = go (xs++ys) zs
- 
-blockDivision :: [RS.RSCode] -> [GF256] -> [(RS.RSCode, [GF256])]
-blockDivision [] [] = []
-blockDivision (r:rs) xs = (r,i):(blockDivision rs f)
-   where (i,f) = splitAt (RS.dataCwCount r) xs
+padCodewords :: Int -> Version -> [GF256]
+padCodewords n =  shortLastwordVersionCase
+                   (const $ if n==0 then [] else (take (n-1) c) ++ [0])
+                   (const $ take n c) 
+   where c = cycle [236,17]
 
-ecBlock :: (RS.RSCode,[GF256]) -> [GF256]
-ecBlock (r,s) = RS.ecCodewords r s
 
-assemble :: [[GF256]] -> [[GF256]] -> [GF256]
-assemble xs ys = go [] xs ++ go [] ys
-   where go [] [] = []
-         go xss [] = go [] $ reverse xss
-         go xss ([]:yss) = go xss yss
-         go xss ((y:ys):yss) = y:(go (ys:xss) yss)
+ecBlock :: (RSCode,[GF256]) -> [GF256]
+ecBlock (r,s) = ecCodewords r s
 
-unAssemble :: Int -> [GF256] -> [GF256] -> [[GF256]]
-unAssemble n xs ys = zipWith (++) 
-                  (go (replicate n []) xs (length xs))
-                  (go (replicate n []) ys (length ys))
-   where go zss zs m | m == 0 = zss
-                     | m <  n = let (a,b) = splitAt (n-m) zss
-                                in (a++) $ zipWith (++) b $ transpose [zs]
-                     | otherwise = let (a,b) = splitAt n zs
-                                   in go (zipWith (++) zss $ transpose [a])
-                                          b (m-n)
 
 miscodeProtectionCw :: ECLevel -> Version -> Int
 miscodeProtectionCw e v | number v > 4 = 0

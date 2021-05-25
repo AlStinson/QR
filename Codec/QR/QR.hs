@@ -1,24 +1,35 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Codec.QR.QR 
-   (
-    module Codec.QR.QR,
-    module Data.Array.QRArray
+   ( module Codec.QR.QR
+   , module Data.Array.Base
+   , module Data.Ix
    ) where
 
 import Codec.QR.Module
+import Codec.QR.ErrorCorrection.Level
 import Codec.QR.Version
+import Data.Array.IArray
+import Data.Array.Base
+import Data.Ix
 
-import Data.Array.QRArray
+newtype QRArray i e = QR {getArray :: Array i e}
+
+instance IArray QRArray e where
+   bounds = bounds . getArray
+   numElements = numElements . getArray
+   unsafeArray i = QR . unsafeArray i
+   unsafeAt = unsafeAt . getArray
 
 type QR = QRArray Module Bool
 
 getVersion :: QR -> Maybe Version
-getVersion qr = unSize $ (1+) $ getSize qr
+getVersion qr = unSize $ getSize qr
 
 getVersionUnsafe :: QR -> Version
-getVersionUnsafe qr = unsafeUnSize $ (1+) $ getSize qr
+getVersionUnsafe qr = unsafeUnSize $ getSize qr
 
 getSize :: QR -> Int
 getSize =  snd . snd . bounds

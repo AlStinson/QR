@@ -1,11 +1,11 @@
 module Codec.QR.Module.Count where
 
 import Codec.QR.Version
-import Codec.QR.ErrorCorrectionLevel
+import Codec.QR.ErrorCorrection.Level
 import Data.Array
 
 totalModCount :: Version -> Int
-totalModCount v = (size v)^2
+totalModCount v = (1 + size v)^2
 
 reservedModCount :: Array Version Int 
 reservedModCount = listArray (MV 1, V 40)

@@ -38,21 +38,21 @@ blankQR = numberVersionCase blankQRMV blankQRV
 
 blankQRV :: Int -> [(Module,Bool)]
 blankQRV v = concat $ 
-   [finderPattern 0 0, finderPattern 0 (s-7), finderPattern (s-7) 0,
-    vWhite 0 7, vWhite 0 (s-8), vWhite (s-7) 7,
-    hWhite 7 0, hWhite 7 (s-8), hWhite (s-8) 0,
-    blackAndWhite 1 (s-16) 6 8, blackAndWhite (s-16) 1 8 6,
-    blackAndWhite 1 1 (s-8) 8, reservedArea 6 1 0 8, 
+   [finderPattern 0 0, finderPattern 0 (s-6), finderPattern (s-6) 0,
+    vWhite 0 7, vWhite 0 (s-7), vWhite (s-6) 7,
+    hWhite 7 0, hWhite 7 (s-7), hWhite (s-7) 0,
+    blackAndWhite 1 (s-15) 6 8, blackAndWhite (s-15) 1 8 6,
+    blackAndWhite 1 1 (s-7) 8, reservedArea 6 1 0 8, 
     reservedArea 2 1 7 8, reservedArea 1 1 8 7, reservedArea 1 6 8 0,
-    reservedArea 1 8 8 (s-8), reservedArea 7 1 (s-7) 8,
-    if s>=45 then reservedArea 6 3 0 (s-11) else [],
-    if s>=45 then reservedArea 3 6 (s-11) 0 else []] ++
+    reservedArea 1 8 8 (s-7), reservedArea 7 1 (s-6) 8,
+    if v >= 7 then reservedArea 6 3 0 (s-10) else [],
+    if v >= 7 then reservedArea 3 6 (s-10) 0 else []] ++
     [alignmentPatter (i-2) (j-2) | (i,j)<- alignmentPatternLocationV v] 
    where s = sizeV v
 
 blankQRMV :: Int -> [(Module,Bool)]
 blankQRMV v = concat $ 
    [finderPattern 0 0, vWhite 0 7, hWhite 7 0, 
-    blackAndWhite 1 (s-8) 0 8, blackAndWhite (s-8) 1 8 0,
+    blackAndWhite 1 (s-7) 0 8, blackAndWhite (s-7) 1 8 0,
     vWhite 1 8, hWhite 8 1]
    where s = sizeMV v

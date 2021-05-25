@@ -1,14 +1,12 @@
 module Codec.QR.Image 
-   (
-    Extension (..), 
-    saveImage
-   )  where
+   ( Extension (..)
+   , saveImage
+   ) where
 
 import Codec.QR.QR
 import Codec.Picture
 
-
-data Extension = PNG | JPG | BMP | GIF | TIFF | HDR | SVG
+data Extension = PNG | JPG | BMP | GIF | TIFF | HDR 
 
 -- Incluir colores y repasar codigo
 
@@ -33,10 +31,13 @@ createImage size minBorder qr = if size<minSize
          qrSize = getSize qr
          (scale,restBorder) = divMod size minSize
          border = minBorder*scale + (div restBorder 2)
-         f x y | and [x'>=0,y'>=0,x'<=qrSize,y'<=qrSize] = if qr ! (y',x') then 0 else 255
+         f x y | and [x'>=0,y'>=0,x'<=qrSize,y'<=qrSize] = 
+                      if qr ! (y',x') then 0 else 255
                | otherwise = 255
             where x' = div (x-border) scale
                   y' = div (y-border) scale
+
+
 {-
 createSVG :: FilePath -> Int -> Int -> QR -> IO()
 createSVG path size minBorder qr = writeFile path $

@@ -4,20 +4,19 @@ import Codec.QR.Version
 import Codec.QR.Mask
 import Codec.QR.QR
 import Codec.QR.Module
+import Data.BitString
 
 import Data.List (maximumBy)
 import Data.Bits (xor)
 
 betterScore :: QR -> Version -> Int
-betterScore qr v = snd $ maximumBy g [(score (f n) v, n) | n<-[0..max]]
-   where max = kindVersionCase 3 7 v
-         s = getSize qr
-         t = reservedMod v
-         f n p = xor (qr ! p) $ if (t ! p) then False else mask n v p 
+betterScore qr v = snd $ maximumBy g [(score (maskModule n v qr t) v, n) 
+                                      | n<-[0 .. kindVersionCase 3 7 v]]
+   where t = reservedMod v
          g (s,n) (p,m) = compare s p
  
 score :: (Module -> Bool) -> Version -> Int
-score f = sizeVersionCase1 (scoreMV f) (scoreV f)
+score f = sizeVersionCase (scoreMV f) (scoreV f)
 
 scoreV :: (Module -> Bool) -> Int -> Int
 scoreV f s = negate $ 
@@ -29,8 +28,8 @@ scoreV f s = negate $
 
 scoreMV :: (Module -> Bool) -> Int -> Int
 scoreMV f s = (min sr sl)*16 + (max sr sl)
-   where sr = sum [if f (n,s) then 1 else 0 | n<-[0..s]]
-         sl = sum [if f (s,n) then 1 else 0 | n<-[0..s]]
+   where sr = count [f (n,s) | n<-[0..s]]
+         sl = count [f (s,n) | n<-[0..s]]
          
 
 

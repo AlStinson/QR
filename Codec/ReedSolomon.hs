@@ -11,7 +11,7 @@ data RSCode = RS
               {
                totalCwCount :: Int,        -- n = numero de palabras totales
                dataCwCount :: Int,         -- k = numero de palabras de datos
-               correctionCapacity :: Int -- r = capacidad de coreccion 
+               correctionCapacity :: Int   -- r = capacidad de coreccion 
               } 
    deriving Show
 
@@ -34,7 +34,7 @@ ecCodewords rs ps = drop 1 $ coefs $ (monomial 1 (ecCwCount rs) +) $
          q = p*(monomial 1 (ecCwCount rs))
          
 decode :: RSCode -> [GF256] -> Maybe [GF256]
-decode rs xs = do restored <- corrigeErrores rs $ makePoly xs
+decode rs xs = do restored <- encode rs $ makePoly xs
                   return $ take (dataCwCount rs) $ drop 1 $ coefs $ 
                            monomial 1 (totalCwCount rs) + restored
 
@@ -42,8 +42,8 @@ decode rs xs = do restored <- corrigeErrores rs $ makePoly xs
 sindromes :: RSCode -> Poly GF256 -> [GF256]
 sindromes rs p = [eval p $ discExp n | n<-[0..ecCwCount rs -1]]
 
-corrigeErrores :: RSCode -> Poly GF256 -> Maybe (Poly GF256)
-corrigeErrores rs p | all (0==) s = Just p
+encode :: RSCode -> Poly GF256 -> Maybe (Poly GF256)
+encode rs p | all (0==) s = Just p
                     | numErrores > correctionCapacity rs = Nothing
                     | otherwise = Just $ p - (fromLists errores pos)
    where s = sindromes rs p
@@ -99,29 +99,3 @@ encuentraNoNulo n m a = go m a
    
 -----------------------------------------------------------------------------
 
--- Ejemplo 
-
-{-
-
-rs = RS 7 3 2
-mensaje :: Polinomio F256
-mensaje = creaPolinomio [1,reduce x,reduce (x+1)]
-cifrado = codifica rs mensaje
-
-errorr = creaPolinomio [reduce x, 0,0,0,reduce (x^2)]
-errado = cifrado +errorr
-s = sindromes rs errado
-expPos = expPosErrores rs s
-pos = map fromEnum expPos
-numErrores = length expPos
-errores = toList $ m*(fromList numErrores 1 s)
-   where (Right m) = inverse $ matrix numErrores numErrores 
-                     (\(x,y) -> (expPos !! (y-1))^x)
-
--}
---AQUI SE QUEDA PILLADO PORQUE EL POLINOMIO DE LAS POSICIONES NO TIENE SOLUCIONES
-{-
-*Codec.ReedSolomon> let rs = rsCode 4 6 1
-*Codec.ReedSolomon> let p = makePoly [1,2,3,4,204,15,200,245,109,200]
-
--}
