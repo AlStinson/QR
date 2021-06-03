@@ -1,6 +1,20 @@
+{- |
+This module can be used to create QR and Micro QR symbols. Only numeric
+alphanumeric and byte mode avalieble, so just latin-1 characters can be 
+encoded. 
+
+Version and mode are automatic selected, so user dont need to think
+about it. It is garantied that the QR recieved will be the most optimiced
+one.
+
+
+It can also be used to decode QR, but with the limitation that the QR must
+be in the type defined in this module as QR and not a loaded image. This
+can be usefull to check that the symbol was correctly made.
+-}
+
 module Codec.QR where
 
-import Codec.QR.String.Optimization
 import Codec.QR.String.Mode
 import Codec.QR.String.Encode
 import Codec.QR.String.Decode
@@ -16,10 +30,10 @@ import Codec.QR.Module.Count
 import Codec.QR.Module.FunctionPatterns
 import Codec.QR.QR
 import Codec.QR.Mask
-import Codec.QR.Image
 import Codec.QR.Version
 
-
+import Data.List
+import Data.Char
 import Data.BitString
 import Data.GF256
 import Data.Bits (xor)
@@ -36,34 +50,31 @@ decodeQR qr = do
    decodeString v $ bitString
  
 
-makeQR :: String -> ECLevel -> QR
-makeQR s e = makeQRWith (Left s) e Nothing Nothing
+makeQR :: ECLevel -> String -> QR
+makeQR e s = makeQRWith e s Nothing Nothing
 
-makeQRWith :: Either String [(DataSet,String)] -> 
-              ECLevel -> 
-              Maybe Version -> 
-              Maybe Mask -> 
---              Maybe Encoding -> 
-              QR 
-makeQRWith a e b c =  (qr //) $ 
+makeQRWith :: ECLevel -> String -> Maybe Version -> Maybe Mask -> QR 
+makeQRWith e s b c =  (qr //) $ 
                     (zip (versionLocation v) $ (vi++vi)) ++
                     (zip (formatLocation v) $ (fi++fi))
-   where minV = maximum [ecLevelMinVersion e, maybe (MV 1) id b, 
-                         minVersion $ maximum $ either 
-                          (map exclusiveSet) (map fst) a]
-         ls = drop (index (MV 1, V 40) minV) $ costs $ 
-               either selectModes preEncodeString a
-         v = findVersion e minV $ map fst ls
-         pre = snd $ ls !! (index (minV, V 40) v)
+   where minV = minVersion e s $ maybe (MV 1) id b
+         costsModes = costsPerVersion s minV
+         v = findVersion e minV $ map snd costsModes
+         bitString = (++remainderBits v) $ encodeData e v $ encodeString v $ 
+                     fst $ costsModes !! (index (minV, V 40) v)
          unMaskQR = array ((0,0),(size v,size v)) $ (blankQR v ++) $
-                    zip (nonReservedMod v) $ (++remainderBits v) $ 
-                     encodeData e v $ encodeString v pre 
+                    zip (nonReservedMod v) $ bitString 
          mask = maybe (betterScore unMaskQR v) id c
          qr = applyMask mask v unMaskQR
          fi = encodeFormat e v mask
          vi = encodeVersion v
 
 
+minVersion :: ECLevel -> String -> Version -> Version
+minVersion e s v = maximum [v, eMinVersion, sMinVersion,cMinVersion]
+   where eMinVersion = [MV 1, MV 2, MV 4, V 1] !! fromEnum e
+         sMinVersion = modeMinVersion $ maximum $ map exclusiveSet s
+         cMinVersion = capacityMinVersion e s 
 
 
 findVersion :: ECLevel -> Version -> [Int] -> Version
@@ -72,10 +83,16 @@ findVersion e m = go $ range (m,V 40)
          go (v:vs) (c:cs) | c <= dataModCount e v = v
                           | otherwise = go vs cs
 
+hasCapacity :: ECLevel -> String -> Bool
+hasCapacity e = hasCapacityVersion e $ V 40 
 
-ecLevelMinVersion :: ECLevel -> Version
-ecLevelMinVersion ecl = case ecl of
-   L -> MV 1
-   M -> MV 2
-   Q -> MV 4
-   H -> V  1
+hasCapacityVersion :: ECLevel -> Version -> String -> Bool
+hasCapacityVersion e v s = dataModCount e v >= (snd $ selectModes s $ v)
+
+url :: ECLevel -> String -> QR
+url e s = makeQR e $ "URL:" ++ map toUpper a ++ b
+   where (a,b) = splitAt (go $ elemIndices '/' s) s
+         go [] = maxBound
+         go [x] = x
+         go (x:y:xs) | x+1==y = go xs
+                     | otherwise = x
