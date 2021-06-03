@@ -29,18 +29,18 @@ getFormatInformationV qr v = go (decodeFormat f1 v) (decodeFormat f2 v)
 
 
 decodeFormat :: BitString -> Version -> Maybe (ECLevel, Mask) 
-decodeFormat s v = decode bhcCode s [(encodeFormat e v m,(e,m)) | 
-                         e<-[L .. maxECLevel v], m<-[0..maxMask v]]
+decodeFormat s v = bhcDecode bhcCodeFormat s [(encodeFormat e v m,(e,m)) | 
+                   e<-[L .. maxECLevel v], m<-[0..maxMask v]]
 
          
 encodeFormat :: ECLevel -> Version -> Mask -> BitString
-encodeFormat e v m = zipWith (+) (infoMask v) $ encode bhcCode $ 
+encodeFormat e v m = zipWith (+) (infoMask v) $ bhcEncode bhcCodeFormat $ 
                    versionCase (vIndicatorMV e) (const $ ecLevelIndicator e) v
                    ++ integralToBitString (kindVersionCase 2 3 v) m
 
 
-bhcCode :: BHCCode
-bhcCode = BHC 15 5 3
+bhcCodeFormat :: BHCCode
+bhcCodeFormat = BHC 15 5 3
 
 infoMask :: Version -> BitString
 infoMask = kindVersionCase p q
