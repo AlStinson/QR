@@ -16,21 +16,16 @@ alignmentPatter :: Int -> Int -> [(Module,Bool)]
 alignmentPatter = placeModules f 5 5 
    where f x y = or [x==0, x==4, y==0, y==4, x==2 && y==2]
 
-
-
 vWhite, hWhite :: Int -> Int -> [(Module,Bool)]
-vWhite = placeModules f 7 1
-   where f _ _ = False
-hWhite = placeModules f 1 8 
-   where f _ _ = False
+vWhite = placeModules (const $ const $ False) 7 1
+hWhite = placeModules (const $ const $ False) 1 8 
 
 blackAndWhite :: Int -> Int -> Int -> Int -> [(Module,Bool)]
 blackAndWhite = placeModules f 
    where f x y = mod (x+y) 2 == 0
 
 reservedArea :: Int -> Int -> Int -> Int -> [(Module,Bool)]
-reservedArea = placeModules f
-   where f _ _ = False
+reservedArea = placeModules $ const $ const $ False
 
 
 blankQR :: Version -> [(Module,Bool)]

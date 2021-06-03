@@ -6,14 +6,14 @@ import Codec.QR.QR
 import Codec.QR.Module
 import Data.BitString
 
-import Data.List (maximumBy)
+import Data.Function (on)
+import Data.List (maximumBy,isPrefixOf)
 import Data.Bits (xor)
 
 betterScore :: QR -> Version -> Int
-betterScore qr v = snd $ maximumBy g [(score (maskModule n v qr t) v, n) 
-                                      | n<-[0 .. kindVersionCase 3 7 v]]
+betterScore qr v = snd $ maximumBy (compare `on` fst) 
+       [(score (maskModule n v qr t) v, n) | n<-[0 .. maxMask v]]
    where t = reservedMod v
-         g (s,n) (p,m) = compare s p
  
 score :: (Module -> Bool) -> Version -> Int
 score f = sizeVersionCase (scoreMV f) (scoreV f)
@@ -23,7 +23,8 @@ scoreV f s = negate $
                sum [sameColorRow f s (i,0) 0 True | i<-[0..s]] + 
                sum [sameColorColumn f s (0,i) 0 True | i<-[0..s]] +
                sum [block f (i,j) | i<-[0..s-1], j<-[i..s-1]] + 
-               sum [pattern f (i,j) | i<-[0..s-10], j<-[0..s-10]] + 
+               sum [pattern [ f (i,j) | j<-[0..s]] | i<-[0..s]] +
+               sum [pattern [ f (i,j) | i<-[0..s]] | j<-[0..s]] +
                proportion f s
 
 scoreMV :: (Module -> Bool) -> Int -> Int
@@ -57,20 +58,17 @@ block f (x,y) | and [b1==b2,b2==b3,b3==b4] = 3
          b3 = f (x  , y+1)
          b4 = f (x+1, y+1) 
 
-pattern :: (Module -> Bool) -> Module -> Int
-pattern g (x,y) = if r==p1 || r==p2 then 40 else 0 + 
-                  if c==p1 || c==p2 then 40 else 0
-   where t = True
-         f = False
-         p1 = [f,f,f,f,t,f,t,t,t,f,t]
-         p2 = [t,f,t,t,t,f,t,f,f,f,f]
-         r = [g (x,y+i) | i<-[0..10]]
-         c = [g (x+i,y) | i<-[0..10]]
+pattern :: [Bool] -> Int
+pattern [] = 0
+pattern xs = (if isPrefixOf pattern1 xs then 40 else 0)+
+             (if isPrefixOf pattern2 xs then 40 else 0)+ 
+             (pattern $ tail xs)
+
+pattern1, pattern2 :: [Bool]
+pattern1 = [False,False,False,False,True,False,True,True,True,False,True]
+pattern2 = [True,False,True,True,True,False,True,False,False,False,False]
 
 proportion :: (Module -> Bool) -> Int -> Int
 proportion f s = (10*) $ round $ 20*if prop>0.5 then prop-0.5 else 0.5-prop
-   where go (True:xs)  = 1+ go xs
-         go (False:xs) = go xs
-         go []         = 0
-         prop = fromIntegral (go $ [f p | p<- range((0,0),(s,s))]) / 
+   where prop = fromIntegral (count $ [f p | p<- range((0,0),(s,s))]) / 
                 fromIntegral ((s+1)^2)

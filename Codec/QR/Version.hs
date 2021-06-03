@@ -2,8 +2,7 @@ module Codec.QR.Version where
 
 import Data.Ix
 
-data Version = V {number :: Int} | 
-               MV {number :: Int}
+data Version = V {number :: Int} |  MV {number :: Int}
    deriving (Eq)
 
 instance Show Version where
@@ -31,9 +30,6 @@ isMicro :: Version -> Bool
 isMicro MV{} = True
 isMicro  _     = False
 
-shortLastword :: Version -> Bool
-shortLastword = numberVersionCase odd (const False)
-
 versionCase :: (Version -> a) -> (Version -> a) -> Version -> a 
 versionCase f g v | isMicro v = f v
                   | otherwise = g v
@@ -45,7 +41,7 @@ kindVersionCase :: a -> a -> Version -> a
 kindVersionCase f g = versionCase (const f) (const g)
 
 sizeVersionCase ::  (Int -> a) -> (Int -> a) -> Version -> a
-sizeVersionCase f g = versionCase (f . size) (g . size)
+sizeVersionCase f g = numberVersionCase (f . sizeMV) (g . sizeV)
 
 shortLastwordVersionCase :: (Version -> a) -> (Version -> a) -> Version -> a
 shortLastwordVersionCase f g = versionCase f' g
@@ -77,3 +73,6 @@ unsafeUnSize x = if x<=16 then MV $ div (x-8) 2 else V $ div (x-16) 4
 
 micros :: [Version]
 micros = range (MV 1, MV 4)
+
+shortLastword :: Version -> Bool
+shortLastword = numberVersionCase odd (const False)

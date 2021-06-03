@@ -33,25 +33,26 @@ reservedModMV _ (x,y) = or [x==0, y==0, x<=8 && y<=8]
 remainderBits :: Version -> BitString
 remainderBits v = take (remainderBitsCount v) $ repeat False
 
-
 alignmentPatternLocationV :: Int -> [(Module)]
 alignmentPatternLocationV 1 = []
-alignmentPatternLocationV n = go3 $ go2 lastPos 
-   where npatterns = 2 + div n 7
+alignmentPatternLocationV n = go $ list lastPos
+   where npatterns = div n 7
+         npatterns1 = npatterns + 1
          fstPos = 6
-         s = 17+4*n
-         lastPos = s - 7
-         sndLastPos = go $ div (6+lastPos*(npatterns-2)+
-                     (div (npatterns-1) 2)) (npatterns-1)
+         lastPos = sizeV n - 6
+         sndLastPos = roundEven $ div (fstPos + 
+                      lastPos*npatterns + div npatterns1 2)
+                      npatterns1
          step = lastPos-sndLastPos
-         go x = x - if even x then 0 else 1
-         go2 x | x<=8       = [6] -- V 32
-               | otherwise = x:(go2 $ x-step)
-         go3 xs = go4 xs xs \\ [(l,l),(l,f),(f,l)]
-            where l = last xs
-                  f = head xs
-         go4 (x:xs) ys = (zip (repeat x) ys) ++ go4 xs ys
-         go4 [] _ = []
+         roundEven x | even x = x
+                     | otherwise = x-1
+         list x | x<=8 = [6]
+                | otherwise = x:(list $ x-step)
+         go xs = let l = last xs
+                     f = head xs
+                 in (foldr (\x ys -> zip (repeat x) xs ++ ys) 
+                     [] xs) \\ [(l,l),(l,f),(f,l)]  
+
 
 versionLocation :: Version -> [(Module)]
 versionLocation = numberVersionCase 
@@ -82,7 +83,7 @@ nonReservedMod v = (s,s):(go (s,s))
                        (isMicro v, y>6, mod (y+k) 4, x, x==s) (x,y)
                   k = if isMicro v && odd (number v) then 2 else 0
 
-           -- (isMicro v, y>6, mod y 4, x  , x==s-1)
+           -- (isMicro v, y>6 , mod y 4, x  , x==s-1)
 nextModule :: (Bool     , Bool, Int    , Int, Bool  ) -> Module -> Module
 
 nextModule (_, True , 0, _, _    ) (x,y) = (x  , y-1)
