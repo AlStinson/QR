@@ -1,6 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances,
-             FlexibleInstances,
-             CPP #-}
+             FlexibleInstances #-}
 
 module Test.QR where
 
@@ -10,11 +9,27 @@ import Codec.QR.Version
 import Codec.QR.String.Mode
 import Codec.QR.QR
 import Codec.QR.Module
+import Codec.QR.String.Encode
 
 import Data.Char
 import Test.QuickCheck
 
 data ArbitraryQR = A QR ECLevel String
+
+newtype CharString = CS String
+
+instance Arbitrary CharString where
+   arbitrary = do
+      n <- Test.QuickCheck.getSize
+      chars <- infiniteListOf $ genSegment (choose (0,n)) arbitrary 
+      return $ CS $ take n $ concat chars
+         where genSegment n d = do
+                 n' <- n
+                 d' <- d
+                 vectorOf n' $ elements $ case d' of
+                  Numeric -> ['0' .. '9']
+                  Alphanumeric -> ['0'..'9']++['A'..'Z']++" $%*+-./:"
+                  Byte -> ['\0' .. '\255']
 
 instance Show ArbitraryQR
    where show (A qr e xs) = show e++"\n"++show xs
@@ -27,41 +42,31 @@ instance Arbitrary DataSet where
 
 instance Arbitrary ArbitraryQR where
    arbitrary = do
-      s <- Test.QuickCheck.getSize
       e <- arbitrary
-      let n = max 1 $ min s $ [1817,1435,1024,784] !! (fromEnum e)
-      intervals <- infiniteListOf $ choose (0,n)
-      string <- generateIntervals $ takeIntervals n intervals
-      let qr = makeQR string e
+      n' <- Test.QuickCheck.getSize
+      let n = 1 + div (n'*capacityMinVersionTable ! (e,V 40)) 100 
+      (CS string) <- resize n arbitrary
+      let qr = makeQR e string
           s = Codec.QR.QR.getSize qr
-      ex <- choose (0,s)
-      ey <- choose (0,s)
-      ne <- choose (0,((s+1)^2 *) $ round $ (!!) [0.07,0.15,0.25,0.30] $ fromEnum e)
-      errors <- vectorOf ne $ elements [(ex,ey)]
+          r = do a <- choose (0,s)
+                 b <- choose (0,s)
+                 return (a,b)
+      ne <- choose (0,((s+1)^2 *) $ round $ (!!) 
+            [0.07,0.15,0.25,0.30] $ fromEnum e)
+      errors <- vectorOf ne r
       let errorQR = qr // [(p,not (qr ! p)) | p<-errors]
       return $ A errorQR e string
-         where takeIntervals n (x:xs) = if (x>=n) then [n] 
-                                        else x:(takeIntervals (n-x) xs)
-               genChar d = elements $ case d of
-                  Numeric -> ['0' .. '9']
-                  Alphanumeric -> ['0'..'9']++['A'..'Z']++" $%*+-./:"
-                  Byte -> ['\0' .. '\255']
-               generateIntervals [] = return []
-               generateIntervals (x:xs) = do 
-                     set <- arbitrary
-                     this <- vectorOf x $ genChar set
-                     other <- generateIntervals xs
-                     return $ this ++ other 
-{-
- add funcion cabe en qr
- max size
--}
 
-proofTest = quickCheckWith stdArgs{maxSize = 1817} test
+
+proofTest = quickCheckWith stdArgs{maxSuccess=100} test
 
 test :: ArbitraryQR -> Property
-test (A qr e xs) = collect (getVersionUnsafe qr) $ 
+test (A qr e xs) = hasCapacity e xs ==> 
+                   collect (getVersionUnsafe qr) $ 
                    (Just xs) == (decodeQR qr) 
+
+
+
 {-
 +++ OK, passed 100 tests:
 10% V  19

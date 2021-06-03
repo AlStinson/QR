@@ -8,9 +8,6 @@ import Data.Ratio (numerator, denominator)
 newtype GF256 = GF256 {unpack :: Word8}
    deriving (Eq, Ord)
 
-instance Show GF256 where
-   show = show . unpack
-
 instance Num GF256 where
    (+) x y = GF256 $ gfSum (unpack x) (unpack y)
    (*) x y = GF256 $ gfMul (unpack x) (unpack y)
