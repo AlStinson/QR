@@ -55,10 +55,10 @@ arbitraryString e v = do m <- elements $ dataSets v
          dataSets _      = [Numeric .. Byte]
          capacity = dataModCount e v
          go m xs = let cost = snd $ selectModes xs v
-                   in if capacity < cost then return $ tail xs
+                   in if capacity < cost then return $ init xs
                       else do 
               (m',ys) <- arbitraryChars m (dataSets v) $ max 1 $ flip div 8 $ 
-                         capacity - cost - (headerCost v $ maximum $dataSets v)
+                         capacity - cost - (headerCost v $ maximum $ dataSets v)
               go m' (xs++ys)
 
 arbitraryECLevel :: Version -> Gen ECLevel
@@ -102,19 +102,17 @@ iosample v1 f = do
 
 generateSamples :: Int -> Maybe Version -> Float -> IO()
 generateSamples n v f = do {go 1 (0,0); return ()} 
-   where go i (a,b) | i>n = do 
-                       putStrLn $ 
-                        "Number of Examples: " ++ show n ++ 
-                        "\nDecoded correctly without errors: " ++ show a ++
-                        "\nDecoded correctly using errors: " ++ show b ++ 
-                        "\n"
-                       return (a,b)
-                    | otherwise = do
-                       putStrLn $ "Example " ++ show i
-                       (a',b') <- iosample v f
-                       putStrLn "\n"
-                       go (i+1) ((if a' then (+1) else id) a,
-                                 (if b' then (+1) else id) b) 
+   where go i (a,b) 
+          | i>n = do 
+             putStrLn $ "Number of Examples: " ++ show n ++ 
+                "\nDecoded correctly without errors: " ++ show a ++
+                "\nDecoded correctly using errors: " ++ show b ++ "\n"
+             return (a,b)
+          | otherwise = do
+             putStrLn $ "Example " ++ show i
+             (a',b') <- iosample v f
+             putStrLn "\n"
+             go (i+1) (if a' then a+1 else a, if b' then b+1 else b) 
 
 quickCheck :: IO ()
 quickCheck = generateSamples 100 Nothing 0.66

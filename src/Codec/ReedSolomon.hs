@@ -7,6 +7,7 @@ import Data.Maybe
 
 
 --            RS n k r
+
 data RSCode = RS { rsTotalCwCount :: Int, 
                    rsDataCwCount :: Int,
                    rsCorrectionCapacity :: Int} 
